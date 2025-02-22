@@ -1,0 +1,16 @@
+#app {
+	max-width: calc(1280px);
+	width: calc(100% - 48px);
+	padding-block: 12px;
+	margin: 0 auto;
+	font-weight: normal;
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	height: 100dvh;
+}
+
+.main {
+	flex: 1;
+	overflow: hidden;
+}
