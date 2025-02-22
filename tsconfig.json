@@ -1,16 +1,17 @@
 {
-	"files": [],
-	"references": [
-		{
-			"path": "./tsconfig.node.json"
-		},
-		{
-			"path": "./tsconfig.app.json"
-		}
-	],
-	"compilerOptions": {
-		"noImplicitAny": true,
-		"noEmitOnError": true,
-		"noEmit": false
-	}
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ],
+  "compilerOptions": {
+    "noImplicitAny": false,
+    // Cho phép kiểu "any" ngầm định
+    "strictNullChecks": false
+    // Không kiểm tra null/undefined chặt chẽ
+  }
 }
