@@ -56,23 +56,23 @@
 	let timeout: null = null;
 
 
-	const setUpHoverColor = (target, color) => {
+	const setUpHoverColor = (target: any, color: any) => {
 		updateBackgroundColor(target, color);
 	}
 
-	const updateBackgroundColor = (target, color) => {
+	const updateBackgroundColor = (target: any, color: any) => {
 		target.style.backgroundColor = color;
 	}
 
-	const setupScrollbar = (options) => {
+	const setupScrollbar = (options: any) => {
 		durationHide.value = options.durationHide || 700;
 		durationStepJump.value = options.durationStepJump || 500;
 
 		if (container.value && scrollbarThumb.value) {
-			scrollbarThumb.value.style.width = options.thumbWidth + "px";
-			scrollbarThumb.value.style.backgroundColor = options.thumbColor;
-			scrollbarTrack.value.style.width = options.trackWidth + "px";
-			scrollbarTrack.value.style.backgroundColor = options.trackColor;
+			scrollbarThumb.value?.style.width = options.thumbWidth + "px";
+			scrollbarThumb.value?.style.backgroundColor = options.thumbColor;
+			scrollbarTrack.value?.style.width = options.trackWidth + "px";
+			scrollbarTrack.value?.style.backgroundColor = options.trackColor;
 
 			// Correct event listener setup
 			if (options.thumbHoverColor) {
