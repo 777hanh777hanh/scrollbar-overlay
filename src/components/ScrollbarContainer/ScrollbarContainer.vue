@@ -11,6 +11,8 @@
 	const startScrollTop = ref(0);
 	const isHoldingTrack = ref(false);
 	const holdScrollInterval = ref(null);
+	const currentStep = ref(0);
+	const totalSteps = ref(0);
 	let timeout = null;
 
 	const showScrollbar = () => {
@@ -41,6 +43,7 @@
 		const adjustedPosition = Math.max(0, Math.min(relativeClickPosition - thumbHeight / 2, availableSpace));
 
 		const scrollRatio = (scrollHeight - clientHeight) / availableSpace;
+
 		return Math.max(0, Math.min(adjustedPosition * scrollRatio, scrollHeight - clientHeight));
 	}
 
@@ -49,39 +52,63 @@
 			clearInterval(holdScrollInterval.value);
 		}
 
-		const {clientHeight, scrollHeight, scrollTop: currentScrollTop} = container.value;
+		const {clientHeight, scrollTop: currentScrollTop} = container.value;
+
+		// Lưu target scrollTop để dùng trong scrollOneStep
+		const targetScroll = ref(targetScrollTop);
+
+		totalSteps.value = Math.ceil(Math.abs(targetScrollTop - currentScrollTop) / clientHeight);
+		currentStep.value = 0;
 
 		const isScrollingDown = targetScrollTop > currentScrollTop;
-		const totalSteps = Math.ceil(Math.abs(targetScrollTop - currentScrollTop) / clientHeight);
-		let currentStep = 0;
 
-		const scrollOneStep = () => {
-			if (!isHoldingTrack.value) {
+		scrollOneStep(isScrollingDown, targetScroll.value);
+
+		if (isHoldingTrack.value && currentStep.value < totalSteps.value) {
+			holdScrollInterval.value = setInterval(() => scrollOneStep(isScrollingDown, targetScroll.value), 500);
+		}
+	}
+
+	const scrollOneStep = (isScrollingDown, targetScroll) => {
+		const {clientHeight, scrollHeight, scrollTop} = container.value;
+
+		if (!isHoldingTrack.value) {
+			clearInterval(holdScrollInterval.value);
+			return;
+		}
+
+		if (isScrollingDown) {
+			const remainingScroll = targetScroll - scrollTop;
+			if (remainingScroll <= 0) {
 				clearInterval(holdScrollInterval.value);
 				return;
 			}
 
-			if (isScrollingDown) {
-				container.value.scrollTop += clientHeight;
-				currentStep++;
+			// Nếu khoảng cách còn lại nhỏ hơn clientHeight, scroll chính xác đến target
+			const scrollAmount = Math.min(clientHeight, remainingScroll);
+			container.value.scrollTop += scrollAmount;
 
-				if (currentStep >= totalSteps || container.value.scrollTop >= scrollHeight - clientHeight) {
-					clearInterval(holdScrollInterval.value);
-				}
-			} else {
-				container.value.scrollTop -= clientHeight;
-				currentStep++;
+			currentStep.value++;
 
-				if (currentStep >= totalSteps || container.value.scrollTop <= 0) {
-					clearInterval(holdScrollInterval.value);
-				}
+			if (currentStep.value >= totalSteps.value || container.value.scrollTop >= scrollHeight - clientHeight) {
+				clearInterval(holdScrollInterval.value);
 			}
-		}
+		} else {
+			const remainingScroll = scrollTop - targetScroll;
+			if (remainingScroll <= 0) {
+				clearInterval(holdScrollInterval.value);
+				return;
+			}
 
-		scrollOneStep();
+			// Nếu khoảng cách còn lại nhỏ hơn clientHeight, scroll chính xác đến target
+			const scrollAmount = Math.min(clientHeight, remainingScroll);
+			container.value.scrollTop -= scrollAmount;
 
-		if (isHoldingTrack.value && currentStep < totalSteps) {
-			holdScrollInterval.value = setInterval(scrollOneStep, 500);
+			currentStep.value++;
+
+			if (currentStep.value >= totalSteps.value || container.value.scrollTop <= 0) {
+				clearInterval(holdScrollInterval.value);
+			}
 		}
 	}
 
@@ -92,19 +119,23 @@
 		document.addEventListener('mousemove', onTrackMouseMove);
 
 		const targetScrollTop = calculateScrollPosition(e.clientY);
+
 		startStepScroll(targetScrollTop);
+
 	}
 
 	const onTrackMouseMove = (e) => {
 		if (isHoldingTrack.value) {
 			const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
-			const isInTrack = e.clientX >= left && e.clientX <= right && e.clientY >= top && e.clientY <= bottom;
+			const clientX = e.clientX;
+			const clientY = e.clientY;
+			const isInTrack = clientX >= left && clientX <= right && clientY >= top && clientY <= bottom;
 
 			if (!isInTrack) {
 				if (holdScrollInterval.value) {
 					clearInterval(holdScrollInterval.value);
 				}
-				return;
+				return
 			}
 		}
 	}
