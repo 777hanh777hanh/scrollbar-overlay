@@ -8,6 +8,9 @@
 			"path": "./tsconfig.app.json"
 		}
 	],
-	"noEmit": false,
-	"noEmitOnError": false
+	"compilerOptions": {
+		"noImplicitAny": true,
+		"noEmitOnError": true,
+		"noEmit": false
+	}
 }
