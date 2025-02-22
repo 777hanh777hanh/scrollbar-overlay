@@ -222,8 +222,10 @@
 		const scrollRange = Math.floor(scrollHeight - clientHeight)
 		const thumbPosition = ((scrollTop / scrollRange) * availableSpace) + (props.spacing)
 
-		(scrollbarThumb.value as HTMLElement).style.height = `${thumbHeight}px`
-		(scrollbarThumb.value as HTMLElement).style.transform = `translateY(${thumbPosition}px)`
+		if (scrollbarThumb.value) {
+			(scrollbarThumb.value as HTMLElement).style.height = `${thumbHeight}px`;
+			(scrollbarThumb.value as HTMLElement).style.transform = `translateY(${thumbPosition}px)`
+		}
 	}
 
 	const onMouseDown = (e: any) => {
