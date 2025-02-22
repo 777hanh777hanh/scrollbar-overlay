@@ -21,5 +21,9 @@
 
 	.about {
 		background-color: rgba(255, 255, 255, .1);
+
+		h1 {
+			margin-left: auto;
+		}
 	}
 </style>

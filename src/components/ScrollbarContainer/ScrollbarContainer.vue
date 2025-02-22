@@ -5,6 +5,10 @@
 	const scrollbarTrack = ref(null)
 	const container = ref(null)
 	const isScrolling = ref(false)
+	const durationHide = ref(700);
+	const isDragging = ref(false);
+	const startY = ref(0);
+	const startScrollTop = ref(0);
 	let timeout = null
 
 	const showScrollbar = () => {
@@ -13,13 +17,14 @@
 
 		timeout = setTimeout(() => {
 			isScrolling.value = false
-		}, 700)
+		}, durationHide.value)
 	}
 
 	const hoverScrollbarThumb = () => {
 		if (timeout) clearTimeout(timeout)
 		isScrolling.value = true;
 	}
+
 	const blurScrollbarThumb = () => {
 		showScrollbar()
 	}
@@ -34,41 +39,74 @@
 		} = container.value
 
 		const spacing = 4;
-		// Tính tỷ lệ giữa clientHeight và scrollHeight
 		const ratio = clientHeight / scrollHeight
-		// Chiều cao của thumb
 		const thumbHeight = Math.max(clientHeight * ratio, 30)
-		// Khoảng trống để thumb có thể di chuyển
 		const availableSpace = clientHeight - thumbHeight - spacing
-		// Khoảng có thể scroll
 		const scrollRange = Math.floor(scrollHeight - clientHeight)
-		// Tính vị trí thumb
 		const thumbPosition = ((scrollTop / scrollRange) * availableSpace) + (spacing / 2)
 
-
-		// Cập nhật style cho thumb
 		scrollbarThumb.value.style.height = `${thumbHeight}px`
 		scrollbarThumb.value.style.transform = `translateY(${thumbPosition}px)`
 	}
 
-	onMounted(() => {
+	// Thêm các hàm xử lý drag & drop
+	const onMouseDown = (e) => {
+		isDragging.value = true;
+		startY.value = e.clientY;
+		startScrollTop.value = container.value.scrollTop;
+		document.addEventListener('mousemove', onMouseMove);
+		document.addEventListener('mouseup', onMouseUp);
+	}
+
+	const onMouseMove = (e) => {
+		if (!isDragging.value) return;
+
+		e.preventDefault();
+		const deltaY = e.clientY - startY.value;
+		const {clientHeight, scrollHeight} = container.value;
+
+		// Tính tỷ lệ giữa khoảng cách di chuyển của chuột và khoảng cách scroll
+		const scrollRatio = scrollHeight / clientHeight;
+		const newScrollTop = startScrollTop.value + (deltaY * scrollRatio);
+
+		// Cập nhật vị trí scroll
+		container.value.scrollTop = Math.max(0, Math.min(newScrollTop, scrollHeight - clientHeight));
+	}
+
+	const onMouseUp = () => {
+		isDragging.value = false;
+		document.removeEventListener('mousemove', onMouseMove);
+		document.removeEventListener('mouseup', onMouseUp);
+	}
+
+	const addEventScrollbar = () => {
 		if (container.value) {
 			container.value.addEventListener('scroll', showScrollbar)
 			container.value.addEventListener('scroll', updateScrollbarPosition)
 			scrollbarTrack.value.addEventListener('mousemove', hoverScrollbarThumb)
 			scrollbarTrack.value.addEventListener('mouseout', blurScrollbarThumb)
+			scrollbarThumb.value.addEventListener('mousedown', onMouseDown)
 			updateScrollbarPosition()
 		}
-	})
+	}
 
-	onUnmounted(() => {
+	const removeEventScrollbar = () => {
 		if (container.value) {
 			container.value.removeEventListener('scroll', showScrollbar)
 			container.value.removeEventListener('scroll', updateScrollbarPosition)
-			scrollbarTrack.value.addEventListener('mousemove', hoverScrollbarThumb)
-			scrollbarTrack.value.addEventListener('mouseout', blurScrollbarThumb)
+			scrollbarTrack.value.removeEventListener('mousemove', hoverScrollbarThumb)
+			scrollbarTrack.value.removeEventListener('mouseout', blurScrollbarThumb)
+			scrollbarThumb.value.removeEventListener('mousedown', onMouseDown)
 		}
 		if (timeout) clearTimeout(timeout)
+	}
+
+	onMounted(() => {
+		addEventScrollbar()
+	})
+
+	onUnmounted(() => {
+		removeEventScrollbar()
 	})
 </script>
 
@@ -86,6 +124,7 @@
 			<div
 				  class="scrollbar-thumb"
 				  ref="scrollbarThumb"
+				  :class="{ 'dragging': isDragging }"
 			></div>
 		</div>
 	</div>
@@ -113,6 +152,10 @@
 		scrollbar-width: none;
 	}
 
+	.content::-webkit-scrollbar {
+		display: none;
+	}
+
 	.custom-scrollbar {
 		background-color: rgba(0, 0, 0, 0.1);
 		position: absolute;
@@ -137,8 +180,17 @@
 		min-height: 30px;
 		background-color: rgba(144, 144, 144, 0.7);
 		border-radius: 4px;
-		transition: transform 0.1s ease;
+		transition: transform 0.05s ease;
 		translate: 50% 0;
-	}
+		cursor: pointer;
 
+		&:hover {
+			background-color: rgba(144, 144, 144, 0.9);
+		}
+
+		&.dragging {
+			background-color: rgba(144, 144, 144, 1);
+			width: 8px;
+		}
+	}
 </style>
