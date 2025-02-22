@@ -53,7 +53,7 @@
 	const holdScrollInterval = ref(null);
 	const currentStep = ref(0);
 	const totalSteps = ref(0);
-	let timeout = null;
+	let timeout: null = null;
 
 
 	const setUpHoverColor = (target, color) => {
