@@ -1,11 +1,51 @@
-<script setup>
+<script setup lang="ts">
 	import {onMounted, onUnmounted, ref} from 'vue'
 
+	const props = defineProps({
+		thumbWidth: {
+			type: Number,
+			default: 4
+		},
+		trackWidth: {
+			type: Number,
+			default: 10
+		},
+		thumbColor: {
+			type: String,
+			default: '#333'
+		},
+		thumbHoverColor: {
+			type: String,
+			default: ''
+		},
+		trackColor: {
+			type: String,
+			default: 'rgba(0, 0, 0, 0.1)'
+		},
+		trackHoverColor: {
+			type: String,
+			default: ''
+		},
+		spacing: {
+			type: Number,
+			default: 4
+		},
+		durationHide: {
+			type: Number,
+			default: 700
+		},
+		durationStepJump: {
+			type: Number,
+			default: 500
+		}
+	})
+
+	const durationHide = ref(700);
+	const durationStepJump = ref(500);
 	const scrollbarThumb = ref(null)
 	const scrollbarTrack = ref(null)
 	const container = ref(null)
 	const isScrolling = ref(false)
-	const durationHide = ref(700);
 	const isDragging = ref(false);
 	const startY = ref(0);
 	const startScrollTop = ref(0);
@@ -14,6 +54,38 @@
 	const currentStep = ref(0);
 	const totalSteps = ref(0);
 	let timeout = null;
+
+
+	const setUpHoverColor = (target, color) => {
+		updateBackgroundColor(target, color);
+	}
+
+	const updateBackgroundColor = (target, color) => {
+		target.style.backgroundColor = color;
+	}
+
+	const setupScrollbar = (options) => {
+		durationHide.value = options.durationHide || 700;
+		durationStepJump.value = options.durationStepJump || 500;
+
+		if (container.value && scrollbarThumb.value) {
+			scrollbarThumb.value.style.width = options.thumbWidth + "px";
+			scrollbarThumb.value.style.backgroundColor = options.thumbColor;
+			scrollbarTrack.value.style.width = options.trackWidth + "px";
+			scrollbarTrack.value.style.backgroundColor = options.trackColor;
+
+			// Correct event listener setup
+			if (options.thumbHoverColor) {
+				scrollbarThumb.value.addEventListener('mousemove', () => setUpHoverColor(scrollbarThumb.value, options.thumbHoverColor));
+				scrollbarTrack.value.addEventListener('mouseout', () => setUpHoverColor(scrollbarTrack.value, options.trackColor));
+			}
+			if (options.trackHoverColor) {
+				scrollbarTrack.value.addEventListener('mousemove', () => setUpHoverColor(scrollbarTrack.value, options.trackHoverColor));
+				scrollbarThumb.value.addEventListener('mouseout', () => setUpHoverColor(scrollbarThumb.value, options.thumbColor));
+			}
+		}
+	}
+
 
 	const showScrollbar = () => {
 		isScrolling.value = true
@@ -65,7 +137,7 @@
 		scrollOneStep(isScrollingDown, targetScroll.value);
 
 		if (isHoldingTrack.value && currentStep.value < totalSteps.value) {
-			holdScrollInterval.value = setInterval(() => scrollOneStep(isScrollingDown, targetScroll.value), 500);
+			holdScrollInterval.value = setInterval(() => scrollOneStep(isScrollingDown, targetScroll.value), durationStepJump.value);
 		}
 	}
 
@@ -77,38 +149,26 @@
 			return;
 		}
 
-		if (isScrollingDown) {
-			const remainingScroll = targetScroll - scrollTop;
-			if (remainingScroll <= 0) {
-				clearInterval(holdScrollInterval.value);
-				return;
-			}
+		// Tính remaining scroll và điều kiện dừng dựa vào hướng scroll
+		const remainingScroll = isScrollingDown ? targetScroll - scrollTop : scrollTop - targetScroll;
+		if (remainingScroll <= 0) {
+			clearInterval(holdScrollInterval.value);
+			return;
+		}
 
-			// Nếu khoảng cách còn lại nhỏ hơn clientHeight, scroll chính xác đến target
-			const scrollAmount = Math.min(clientHeight, remainingScroll);
-			container.value.scrollTop += scrollAmount;
+		// Tính scroll amount và cập nhật scrollTop
+		const scrollAmount = Math.min(clientHeight, remainingScroll);
+		container.value.scrollTop += isScrollingDown ? scrollAmount : -scrollAmount;
 
-			currentStep.value++;
+		currentStep.value++;
 
-			if (currentStep.value >= totalSteps.value || container.value.scrollTop >= scrollHeight - clientHeight) {
-				clearInterval(holdScrollInterval.value);
-			}
-		} else {
-			const remainingScroll = scrollTop - targetScroll;
-			if (remainingScroll <= 0) {
-				clearInterval(holdScrollInterval.value);
-				return;
-			}
+		// Kiểm tra điều kiện dừng
+		const reachedLimit = isScrollingDown
+			  ? container.value.scrollTop >= scrollHeight - clientHeight
+			  : container.value.scrollTop <= 0;
 
-			// Nếu khoảng cách còn lại nhỏ hơn clientHeight, scroll chính xác đến target
-			const scrollAmount = Math.min(clientHeight, remainingScroll);
-			container.value.scrollTop -= scrollAmount;
-
-			currentStep.value++;
-
-			if (currentStep.value >= totalSteps.value || container.value.scrollTop <= 0) {
-				clearInterval(holdScrollInterval.value);
-			}
+		if (currentStep.value >= totalSteps.value || reachedLimit) {
+			clearInterval(holdScrollInterval.value);
 		}
 	}
 
@@ -154,9 +214,7 @@
 
 		// Điều chỉnh độ nhạy của scroll (có thể thay đổi hệ số 0.5 để tăng/giảm tốc độ)
 		const delta = e.deltaY * 0.5;
-		const newScrollTop = Math.max(0, Math.min(scrollTop + delta, maxScroll));
-
-		container.value.scrollTop = newScrollTop;
+		container.value.scrollTop = Math.max(0, Math.min(scrollTop + delta, maxScroll));
 		showScrollbar();
 	}
 
@@ -185,12 +243,11 @@
 			scrollTop
 		} = container.value
 
-		const spacing = 4;
 		const ratio = clientHeight / scrollHeight
 		const thumbHeight = Math.max(clientHeight * ratio, 30)
-		const availableSpace = clientHeight - thumbHeight - spacing
+		const availableSpace = clientHeight - thumbHeight - (props.spacing * 2)
 		const scrollRange = Math.floor(scrollHeight - clientHeight)
-		const thumbPosition = ((scrollTop / scrollRange) * availableSpace) + (spacing / 2)
+		const thumbPosition = ((scrollTop / scrollRange) * availableSpace) + (props.spacing)
 
 		scrollbarThumb.value.style.height = `${thumbHeight}px`
 		scrollbarThumb.value.style.transform = `translateY(${thumbPosition}px)`
@@ -256,6 +313,7 @@
 	}
 
 	onMounted(() => {
+		setupScrollbar(props)
 		addEventScrollbar()
 	})
 
@@ -318,8 +376,10 @@
 		width: 20px;
 		height: 100%;
 		opacity: 0;
-		transition: opacity 0.3s ease;
+		transition: opacity 0.3s ease, background-color 0.3s linear;
 		cursor: pointer;
+		user-select: none;
+
 	}
 
 	.scrollbar-visible {
@@ -327,6 +387,7 @@
 	}
 
 	.scrollbar-thumb {
+		user-select: none;
 		position: absolute;
 		top: 0;
 		right: 50%;
@@ -335,17 +396,17 @@
 		min-height: 30px;
 		background-color: rgba(144, 144, 144, 0.7);
 		border-radius: 4px;
-		transition: transform 0.1s ease;
+		transition: transform 0.025s ease, background-color 0.25s linear;
 		translate: 50% 0;
 		cursor: pointer;
 
 		&:hover {
-			background-color: rgba(144, 144, 144, 0.9);
+			opacity: 1
 		}
 
 		&.dragging {
-			background-color: rgba(144, 144, 144, 1);
-			width: 8px;
+			opacity: 1;
 		}
 	}
+
 </style>

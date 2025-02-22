@@ -3,7 +3,7 @@
 </script>
 
 <template>
-	<ScrollbarContainer>
+	<ScrollbarContainer :duration-hide="1500" :thumb-width="6" :track-width="20" :spacing="24">
 		<div class="about">
 			<h1>This is an about page</h1>
 		</div>
