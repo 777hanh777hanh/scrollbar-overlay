@@ -172,33 +172,6 @@
 		}
 	}
 
-	const onTrackMouseDown = (e) => {
-		if (e.target === scrollbarThumb.value) return;
-
-		isHoldingTrack.value = true;
-		document.addEventListener('mousemove', onTrackMouseMove);
-
-		const targetScrollTop = calculateScrollPosition(e.clientY);
-
-		startStepScroll(targetScrollTop);
-
-	}
-
-	const onTrackMouseMove = (e) => {
-		if (isHoldingTrack.value) {
-			const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
-			const clientX = e.clientX;
-			const clientY = e.clientY;
-			const isInTrack = clientX >= left && clientX <= right && clientY >= top && clientY <= bottom;
-
-			if (!isInTrack) {
-				if (holdScrollInterval.value) {
-					clearInterval(holdScrollInterval.value);
-				}
-				return
-			}
-		}
-	}
 
 	const onTrackMouseLeave = () => {
 		if (isHoldingTrack.value && holdScrollInterval.value) {
@@ -274,8 +247,57 @@
 		container.value.scrollTop = Math.max(0, Math.min(newScrollTop, scrollHeight - clientHeight));
 	}
 
+	const onTrackMouseDown = (e) => {
+		if (e.target === scrollbarThumb.value) return;
+
+		isHoldingTrack.value = true;
+		document.addEventListener('mousemove', onTrackMouseMove);
+
+		const targetScrollTop = calculateScrollPosition(e.clientY);
+		startStepScroll(targetScrollTop);
+	}
+
+	const onTrackMouseMove = (e) => {
+		if (!isHoldingTrack.value) return;
+
+		const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
+		const clientX = e.clientX;
+		const clientY = e.clientY;
+		const isInTrack = clientX >= left && clientX <= right && clientY >= top && clientY <= bottom;
+
+		if (!isInTrack) {
+			if (holdScrollInterval.value) {
+				clearInterval(holdScrollInterval.value);
+			}
+			return;
+		}
+
+		// Lấy vị trí hiện tại của thumb
+		const thumbRect = scrollbarThumb.value.getBoundingClientRect();
+		const thumbMiddle = thumbRect.top + thumbRect.height / 2;
+
+		// Nếu chuột ở gần thumb (trong khoảng 10px) thì chuyển sang drag mode
+		if (Math.abs(clientY - thumbMiddle) <= 10) {
+			clearInterval(holdScrollInterval.value);
+			isHoldingTrack.value = false;
+
+			// Chuyển sang drag mode
+			isDragging.value = true;
+			startY.value = clientY;
+			startScrollTop.value = container.value.scrollTop;
+			document.addEventListener('mousemove', onMouseMove);
+			document.addEventListener('mouseup', onMouseUp);
+		} else {
+			// Nếu không, tiếp tục scroll theo step đến vị trí mới
+			const targetScrollTop = calculateScrollPosition(clientY);
+			startStepScroll(targetScrollTop);
+		}
+	}
+
 	const onMouseUp = () => {
 		isDragging.value = false;
+		isHoldingTrack.value = false;
+
 		document.removeEventListener('mousemove', onMouseMove);
 		document.removeEventListener('mouseup', onMouseUp);
 	}

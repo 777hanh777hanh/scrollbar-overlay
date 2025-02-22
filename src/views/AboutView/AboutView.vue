@@ -3,7 +3,7 @@
 </script>
 
 <template>
-	<ScrollbarContainer :duration-hide="1500" :thumb-width="6" :track-width="20" :spacing="24">
+	<ScrollbarContainer :duration-hide="500" :thumb-width="6" :track-width="10" :spacing="24">
 		<div class="about">
 			<h1>This is an about page</h1>
 		</div>
@@ -13,7 +13,7 @@
 <style scoped lang="scss">
 	@media (min-width: 1024px) {
 		.about {
-			min-height: 200dvh;
+			min-height: 2000dvh;
 			display: flex;
 			align-items: center;
 		}
@@ -23,7 +23,7 @@
 		background-color: rgba(255, 255, 255, .1);
 
 		h1 {
-			//margin-left: auto;
+			margin-left: auto;
 		}
 	}
 </style>
