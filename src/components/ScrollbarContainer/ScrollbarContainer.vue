@@ -387,7 +387,7 @@
 
 
 	const addEventScrollbar = () => {
-		if (container.value) {
+		if (container.value && scrollbarTrack.value && scrollbarThumb.value) {
 			(container.value as HTMLElement).addEventListener('scroll', showScrollbar);
 			(container.value as HTMLElement).addEventListener('scroll', updateScrollbarPosition);
 			(scrollbarTrack.value as HTMLElement).addEventListener('mousemove', hoverScrollbarThumb);
