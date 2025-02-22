@@ -21,9 +21,11 @@
 
 	.about {
 		background-color: rgba(255, 255, 255, .1);
+		min-height: 2000dvh;
 
 		h1 {
 			margin-left: auto;
+			color: red;
 		}
 	}
 </style>

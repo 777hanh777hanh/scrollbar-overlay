@@ -302,6 +302,88 @@
 		document.removeEventListener('mouseup', onMouseUp);
 	}
 
+	// Thêm các ref mới để theo dõi trạng thái touch
+	const isTouching = ref(false);
+	const startTouch = ref({x: 0, y: 0});
+	const lastTouch = ref({x: 0, y: 0});
+
+	// Thêm các hàm xử lý touch events
+	const onThumbTouchStart = (e) => {
+		e.preventDefault();
+		const touch = e.touches[0];
+		isTouching.value = true;
+		startTouch.value = {x: touch.clientX, y: touch.clientY};
+		lastTouch.value = {x: touch.clientX, y: touch.clientY};
+		startScrollTop.value = container.value.scrollTop;
+	}
+
+	const onThumbTouchMove = (e) => {
+		if (!isTouching.value) return;
+		e.preventDefault();
+
+		const touch = e.touches[0];
+		const deltaY = touch.clientY - startTouch.value.y;
+		lastTouch.value = {x: touch.clientX, y: touch.clientY};
+
+		const {clientHeight, scrollHeight} = container.value;
+		const scrollRatio = scrollHeight / clientHeight;
+		const newScrollTop = startScrollTop.value + (deltaY * scrollRatio);
+
+		container.value.scrollTop = Math.max(0, Math.min(newScrollTop, scrollHeight - clientHeight));
+	}
+
+	const onTrackTouchStart = (e) => {
+		if (e.target === scrollbarThumb.value) return;
+
+		const touch = e.touches[0];
+		isHoldingTrack.value = true;
+		const targetScrollTop = calculateScrollPosition(touch.clientY);
+		startStepScroll(targetScrollTop);
+	}
+
+	const onTrackTouchMove = (e) => {
+		if (!isHoldingTrack.value) return;
+		e.preventDefault();
+
+		const touch = e.touches[0];
+		const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
+		const isInTrack = touch.clientX >= left && touch.clientX <= right &&
+			  touch.clientY >= top && touch.clientY <= bottom;
+
+		if (!isInTrack) {
+			if (holdScrollInterval.value) {
+				clearInterval(holdScrollInterval.value);
+			}
+			return;
+		}
+
+		const thumbRect = scrollbarThumb.value.getBoundingClientRect();
+		const thumbMiddle = thumbRect.top + thumbRect.height / 2;
+
+		if (Math.abs(touch.clientY - thumbMiddle) <= 10) {
+			clearInterval(holdScrollInterval.value);
+			isHoldingTrack.value = false;
+
+			// Chuyển sang touch drag mode
+			isTouching.value = true;
+			startTouch.value = {x: touch.clientX, y: touch.clientY};
+			lastTouch.value = {x: touch.clientX, y: touch.clientY};
+			startScrollTop.value = container.value.scrollTop;
+		} else {
+			const targetScrollTop = calculateScrollPosition(touch.clientY);
+			startStepScroll(targetScrollTop);
+		}
+	}
+
+	const onTouchEnd = () => {
+		isTouching.value = false;
+		isHoldingTrack.value = false;
+		if (holdScrollInterval.value) {
+			clearInterval(holdScrollInterval.value);
+		}
+	}
+
+
 	const addEventScrollbar = () => {
 		if (container.value) {
 			container.value.addEventListener('scroll', showScrollbar)
@@ -313,6 +395,14 @@
 			scrollbarTrack.value.addEventListener('wheel', onTrackWheel) // Thêm event wheel
 			document.addEventListener('mouseup', onTrackMouseUp)
 			scrollbarThumb.value.addEventListener('mousedown', onMouseDown)
+
+			// Add touch events
+			scrollbarThumb.value.addEventListener('touchstart', onThumbTouchStart, {passive: false});
+			scrollbarThumb.value.addEventListener('touchmove', onThumbTouchMove, {passive: false});
+			scrollbarTrack.value.addEventListener('touchstart', onTrackTouchStart, {passive: false});
+			scrollbarTrack.value.addEventListener('touchmove', onTrackTouchMove, {passive: false});
+			document.addEventListener('touchend', onTouchEnd);
+
 			updateScrollbarPosition()
 		}
 	}
@@ -329,6 +419,13 @@
 			document.removeEventListener('mouseup', onTrackMouseUp)
 			document.removeEventListener('mousemove', onTrackMouseMove)
 			scrollbarThumb.value.removeEventListener('mousedown', onMouseDown)
+
+			// Remove touch events
+			scrollbarThumb.value.removeEventListener('touchstart', onThumbTouchStart);
+			scrollbarThumb.value.removeEventListener('touchmove', onThumbTouchMove);
+			scrollbarTrack.value.removeEventListener('touchstart', onTrackTouchStart);
+			scrollbarTrack.value.removeEventListener('touchmove', onTrackTouchMove);
+			document.removeEventListener('touchend', onTouchEnd);
 		}
 		if (timeout) clearTimeout(timeout)
 		if (holdScrollInterval.value) clearInterval(holdScrollInterval.value)
@@ -371,6 +468,7 @@
 		overflow-y: hidden;
 		-ms-overflow-style: none;
 		scrollbar-width: none;
+		overscroll-behavior: none;
 	}
 
 	.scroll-container::-webkit-scrollbar {
@@ -383,6 +481,7 @@
 		width: 100%;
 		height: 100%;
 		-ms-overflow-style: none;
+		overscroll-behavior: none;
 		scrollbar-width: none;
 	}
 
