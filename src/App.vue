@@ -9,8 +9,8 @@
 		<div class="wrapper">
 
 			<nav>
-				<RouterLink to="/">Home</RouterLink>
-				<RouterLink to="/about">About</RouterLink>
+				<RouterLink class="nav-link" to="/">Home</RouterLink>
+				<RouterLink class="nav-link" to="/about">About</RouterLink>
 			</nav>
 		</div>
 	</header>
@@ -20,7 +20,7 @@
 	</main>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 	header {
 		line-height: 1.5;
 		max-height: 100vh;
@@ -54,6 +54,16 @@
 
 	nav a:first-of-type {
 		border: 0;
+	}
+
+	.nav-link {
+		font-size: 2rem;
+		padding: 8px 12px;
+		color: #9a9a9a;
+
+		&.router-link-active {
+			color: violet
+		}
 	}
 
 	@media (min-width: 1024px) {

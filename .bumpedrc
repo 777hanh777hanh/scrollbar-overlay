@@ -1,0 +1,17 @@
+files:
+  - package.json
+plugins:
+  prerelease:
+    Linting config files:
+      plugin: bumped-finepack
+  postrelease:
+    Generating CHANGELOG file:
+      plugin: bumped-changelog
+      options:
+        filename: 'CHANGELOG.md'
+    Committing new version:
+      plugin: bumped-terminal
+      command: 'bash ci/release.sh $newVersion'
+    Publishing tag:
+      plugin: bumped-terminal
+      command: 'git tag $newVersion && git push && git push --tags'

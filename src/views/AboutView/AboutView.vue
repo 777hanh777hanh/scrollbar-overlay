@@ -3,7 +3,8 @@
 </script>
 
 <template>
-	<ScrollbarContainer :duration-hide="500" :thumb-width="6" :track-width="10" :spacing="24">
+	<ScrollbarContainer :duration-hide="500" :thumb-width="6" :track-width="10" :spacing="0" :thumb-color="'violet'"
+						track-color="rgba(238, 130, 238, .1)">
 		<div class="about">
 			<h1>This is an about page</h1>
 		</div>
@@ -25,7 +26,8 @@
 
 		h1 {
 			margin-left: auto;
-			color: red;
+			text-align: right;
+			color: bisque;
 		}
 	}
 </style>

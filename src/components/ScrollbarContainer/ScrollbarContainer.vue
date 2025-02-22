@@ -500,7 +500,7 @@
 		transition: opacity 0.3s ease, background-color 0.3s linear;
 		cursor: pointer;
 		user-select: none;
-
+		touch-action: none;
 	}
 
 	.scrollbar-visible {
@@ -520,6 +520,7 @@
 		transition: transform 0.025s ease, background-color 0.25s linear;
 		translate: 50% 0;
 		cursor: pointer;
+		touch-action: none;
 
 		&:hover {
 			opacity: 1
