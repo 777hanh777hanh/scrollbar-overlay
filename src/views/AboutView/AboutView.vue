@@ -13,7 +13,7 @@
 <style scoped lang="scss">
 	@media (min-width: 1024px) {
 		.about {
-			min-height: 500dvh;
+			min-height: 10000dvh;
 			display: flex;
 			align-items: center;
 		}
