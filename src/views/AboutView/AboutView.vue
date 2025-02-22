@@ -13,7 +13,7 @@
 <style scoped lang="scss">
 	@media (min-width: 1024px) {
 		.about {
-			min-height: 10000dvh;
+			min-height: 200dvh;
 			display: flex;
 			align-items: center;
 		}
@@ -23,7 +23,7 @@
 		background-color: rgba(255, 255, 255, .1);
 
 		h1 {
-			margin-left: auto;
+			//margin-left: auto;
 		}
 	}
 </style>

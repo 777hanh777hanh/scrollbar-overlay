@@ -44,25 +44,44 @@
 		return Math.max(0, Math.min(adjustedPosition * scrollRatio, scrollHeight - clientHeight));
 	}
 
-	const startAutoScroll = (clientY) => {
-		const newScrollTop = calculateScrollPosition(clientY);
-		container.value.scrollTop = newScrollTop;
+	const startStepScroll = (targetScrollTop) => {
+		if (holdScrollInterval.value) {
+			clearInterval(holdScrollInterval.value);
+		}
 
-		if (isHoldingTrack.value) {
-			const {clientHeight, scrollHeight} = container.value;
-			const remainingScroll = scrollHeight - newScrollTop - clientHeight;
-			const steps = Math.floor(remainingScroll / clientHeight);
+		const {clientHeight, scrollHeight, scrollTop: currentScrollTop} = container.value;
 
-			let currentStep = 0;
+		const isScrollingDown = targetScrollTop > currentScrollTop;
+		const totalSteps = Math.ceil(Math.abs(targetScrollTop - currentScrollTop) / clientHeight);
+		let currentStep = 0;
 
-			holdScrollInterval.value = setInterval(() => {
-				if (currentStep < steps && isHoldingTrack.value) {
-					container.value.scrollTop += clientHeight;
-					currentStep++;
-				} else {
+		const scrollOneStep = () => {
+			if (!isHoldingTrack.value) {
+				clearInterval(holdScrollInterval.value);
+				return;
+			}
+
+			if (isScrollingDown) {
+				container.value.scrollTop += clientHeight;
+				currentStep++;
+
+				if (currentStep >= totalSteps || container.value.scrollTop >= scrollHeight - clientHeight) {
 					clearInterval(holdScrollInterval.value);
 				}
-			}, 500);
+			} else {
+				container.value.scrollTop -= clientHeight;
+				currentStep++;
+
+				if (currentStep >= totalSteps || container.value.scrollTop <= 0) {
+					clearInterval(holdScrollInterval.value);
+				}
+			}
+		}
+
+		scrollOneStep();
+
+		if (isHoldingTrack.value && currentStep < totalSteps) {
+			holdScrollInterval.value = setInterval(scrollOneStep, 500);
 		}
 	}
 
@@ -70,28 +89,49 @@
 		if (e.target === scrollbarThumb.value) return;
 
 		isHoldingTrack.value = true;
-		// Thêm event listener cho mousemove khi bắt đầu giữ track
 		document.addEventListener('mousemove', onTrackMouseMove);
-		startAutoScroll(e.clientY);
+
+		const targetScrollTop = calculateScrollPosition(e.clientY);
+		startStepScroll(targetScrollTop);
 	}
 
-	// Thêm hàm xử lý mousemove khi đang giữ track
 	const onTrackMouseMove = (e) => {
 		if (isHoldingTrack.value) {
-			// Clear interval đang chạy nếu có
-			if (holdScrollInterval.value) {
-				clearInterval(holdScrollInterval.value);
+			const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
+			const isInTrack = e.clientX >= left && e.clientX <= right && e.clientY >= top && e.clientY <= bottom;
+
+			if (!isInTrack) {
+				if (holdScrollInterval.value) {
+					clearInterval(holdScrollInterval.value);
+				}
+				return;
 			}
-			// Cập nhật vị trí scroll theo vị trí chuột mới
-			const newScrollTop = calculateScrollPosition(e.clientY);
-			container.value.scrollTop = newScrollTop;
 		}
+	}
+
+	const onTrackMouseLeave = () => {
+		if (isHoldingTrack.value && holdScrollInterval.value) {
+			clearInterval(holdScrollInterval.value);
+		}
+	}
+
+	// Thêm xử lý scroll wheel trong track
+	const onTrackWheel = (e) => {
+		e.preventDefault();
+		const {clientHeight, scrollHeight, scrollTop} = container.value;
+		const maxScroll = scrollHeight - clientHeight;
+
+		// Điều chỉnh độ nhạy của scroll (có thể thay đổi hệ số 0.5 để tăng/giảm tốc độ)
+		const delta = e.deltaY * 0.5;
+		const newScrollTop = Math.max(0, Math.min(scrollTop + delta, maxScroll));
+
+		container.value.scrollTop = newScrollTop;
+		showScrollbar();
 	}
 
 	const onTrackMouseUp = (e) => {
 		if (isHoldingTrack.value) {
 			isHoldingTrack.value = false;
-			// Remove event listener mousemove khi thả track
 			document.removeEventListener('mousemove', onTrackMouseMove);
 
 			if (holdScrollInterval.value) {
@@ -100,7 +140,7 @@
 
 			const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
 			if (e.clientX >= left && e.clientX <= right && e.clientY >= top && e.clientY <= bottom) {
-				startAutoScroll(e.clientY);
+				container.value.scrollTop = calculateScrollPosition(e.clientY);
 			}
 		}
 	}
@@ -159,6 +199,8 @@
 			scrollbarTrack.value.addEventListener('mousemove', hoverScrollbarThumb)
 			scrollbarTrack.value.addEventListener('mouseout', blurScrollbarThumb)
 			scrollbarTrack.value.addEventListener('mousedown', onTrackMouseDown)
+			scrollbarTrack.value.addEventListener('mouseleave', onTrackMouseLeave)
+			scrollbarTrack.value.addEventListener('wheel', onTrackWheel) // Thêm event wheel
 			document.addEventListener('mouseup', onTrackMouseUp)
 			scrollbarThumb.value.addEventListener('mousedown', onMouseDown)
 			updateScrollbarPosition()
@@ -172,6 +214,8 @@
 			scrollbarTrack.value.removeEventListener('mousemove', hoverScrollbarThumb)
 			scrollbarTrack.value.removeEventListener('mouseout', blurScrollbarThumb)
 			scrollbarTrack.value.removeEventListener('mousedown', onTrackMouseDown)
+			scrollbarTrack.value.removeEventListener('mouseleave', onTrackMouseLeave)
+			scrollbarTrack.value.removeEventListener('wheel', onTrackWheel) // Remove event wheel
 			document.removeEventListener('mouseup', onTrackMouseUp)
 			document.removeEventListener('mousemove', onTrackMouseMove)
 			scrollbarThumb.value.removeEventListener('mousedown', onMouseDown)
