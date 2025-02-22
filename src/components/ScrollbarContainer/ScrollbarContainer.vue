@@ -69,10 +69,10 @@
 		durationStepJump.value = options.durationStepJump || 500;
 
 		if (container.value && scrollbarThumb.value) {
-			scrollbarThumb.value?.style.width = options.thumbWidth + "px";
-			scrollbarThumb.value?.style.backgroundColor = options.thumbColor;
-			scrollbarTrack.value?.style.width = options.trackWidth + "px";
-			scrollbarTrack.value?.style.backgroundColor = options.trackColor;
+			(scrollbarThumb.value as HTMLElement).style.width = options.thumbWidth + "px";
+			scrollbarThumb.value.style.backgroundColor = options.thumbColor;
+			scrollbarTrack.value.style.width = options.trackWidth + "px";
+			scrollbarTrack.value.style.backgroundColor = options.trackColor;
 
 			// Correct event listener setup
 			if (options.thumbHoverColor) {
