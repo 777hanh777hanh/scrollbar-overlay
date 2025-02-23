@@ -10,8 +10,6 @@
 	],
 	"compilerOptions": {
 		"noImplicitAny": false,
-		"strictNullChecks": false,
-		"noEmit": false,
-		"noEmitOnError": false
+		"strictNullChecks": false
 	}
 }

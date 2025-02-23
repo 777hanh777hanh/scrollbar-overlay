@@ -498,7 +498,6 @@
 		height: 100%;
 		opacity: 0;
 		transition: opacity 0.3s ease, background-color 0.3s linear;
-		cursor: pointer;
 		user-select: none;
 
 		touch-action: none;
@@ -518,10 +517,10 @@
 		min-height: 30px;
 		background-color: rgba(144, 144, 144, 0.7);
 		border-radius: 4px;
-		transition: transform 0.025s ease, background-color 0.25s linear;
 		translate: 50% 0;
-		cursor: pointer;
 		touch-action: none;
+		opacity: .8;
+		transition: transform 0.025s ease, background-color 0.25s linear, opacity 0.25s linear;
 
 		&:hover {
 			opacity: 1
