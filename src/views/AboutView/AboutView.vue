@@ -3,7 +3,8 @@
 </script>
 
 <template>
-	<ScrollbarContainer :duration-hide="500" :thumb-width="6" :track-width="10" :spacing="0" :thumb-color="'violet'"
+	<ScrollbarContainer :duration-hide="1000" :duration-hide-mobile="1500" :thumb-width="10" :track-width="4"
+						:spacing="0" :thumb-color="'violet'"
 						track-color="rgba(238, 130, 238, .1)">
 		<div class="about">
 			<h1>This is an about page</h1>

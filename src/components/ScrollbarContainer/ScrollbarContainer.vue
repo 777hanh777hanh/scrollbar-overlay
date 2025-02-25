@@ -1,14 +1,14 @@
 <script setup lang="ts">
-	import {onMounted, onUnmounted, ref} from 'vue'
+	import {computed, onMounted, onUnmounted, ref, watch} from 'vue'
 
 	const props = defineProps({
 		thumbWidth: {
 			type: Number,
-			default: 4
+			default: 10
 		},
 		trackWidth: {
 			type: Number,
-			default: 10
+			default: 4
 		},
 		thumbColor: {
 			type: String,
@@ -34,18 +34,28 @@
 			type: Number,
 			default: 700
 		},
+		durationHideMobile: {
+			type: Number,
+		},
 		durationStepJump: {
 			type: Number,
 			default: 500
 		}
 	})
 
-	const durationHide = ref(700);
-	const durationStepJump = ref(500);
+	// Tính toán offset khi thumb rộng hơn track
+	const scrollbarOffset = computed(() => {
+		if (props.thumbWidth > props.trackWidth) {
+			return (props.thumbWidth - props.trackWidth) / 2;
+		}
+		return 0;
+	});
+
 	const scrollbarThumb = ref(null)
 	const scrollbarTrack = ref(null)
 	const container = ref(null)
 	const isScrolling = ref(false)
+	const isMouseHovering = ref(false)  // Trạng thái khi chuột hover
 	const isDragging = ref(false);
 	const startY = ref(0);
 	const startScrollTop = ref(0);
@@ -55,6 +65,23 @@
 	const totalSteps = ref(0);
 	let timeout = null;
 
+	// Xác định nếu đang sử dụng touch
+	const isTouchDevice = ref(false);
+
+	// Lấy thời gian timeout phù hợp với loại thiết bị
+	const getHideDuration = () => {
+		const durationMobile = props.durationHideMobile ?? props.durationHide
+		return isTouchDevice.value ? durationMobile : props.durationHide;
+	};
+
+	// Tính toán trạng thái hiển thị scrollbar
+	const isScrollbarVisible = computed(() => {
+		// Nếu đang sử dụng chuột và chuột đang hover -> hiển thị
+		if (!isTouchDevice.value && isMouseHovering.value) return true;
+
+		// Nếu đang scroll -> hiển thị
+		return isScrolling.value;
+	});
 
 	const setUpHoverColor = (target, color) => {
 		updateBackgroundColor(target, color);
@@ -65,44 +92,63 @@
 	}
 
 	const setupScrollbar = (options) => {
-		durationHide.value = options.durationHide || 700;
-		durationStepJump.value = options.durationStepJump || 500;
-
-		if (container.value && scrollbarThumb.value) {
+		if (container.value && scrollbarThumb.value && scrollbarTrack.value) {
+			// Thiết lập style cho thumb và track
 			scrollbarThumb.value.style.width = options.thumbWidth + "px";
 			scrollbarThumb.value.style.backgroundColor = options.thumbColor;
 			scrollbarTrack.value.style.width = options.trackWidth + "px";
 			scrollbarTrack.value.style.backgroundColor = options.trackColor;
 
-			// Correct event listener setup
+			// Cập nhật vị trí của scrollbar khi thumb rộng hơn track
+			const offset = options.thumbWidth > options.trackWidth ?
+				  (options.thumbWidth - options.trackWidth) / 2 : 0;
+			scrollbarTrack.value.style.right = offset + "px";
+
+			// Thiết lập event listeners cho hover color
 			if (options.thumbHoverColor) {
-				scrollbarThumb.value.addEventListener('mousemove', () => setUpHoverColor(scrollbarThumb.value, options.thumbHoverColor));
-				scrollbarTrack.value.addEventListener('mouseout', () => setUpHoverColor(scrollbarTrack.value, options.trackColor));
+				scrollbarThumb.value.addEventListener('mousemove', () => {
+					if (isScrollbarVisible.value) {
+						setUpHoverColor(scrollbarThumb.value, options.thumbHoverColor);
+					}
+				});
+				scrollbarThumb.value.addEventListener('mouseout', () => {
+					setUpHoverColor(scrollbarThumb.value, options.thumbColor);
+				});
 			}
 			if (options.trackHoverColor) {
-				scrollbarTrack.value.addEventListener('mousemove', () => setUpHoverColor(scrollbarTrack.value, options.trackHoverColor));
-				scrollbarThumb.value.addEventListener('mouseout', () => setUpHoverColor(scrollbarThumb.value, options.thumbColor));
+				scrollbarTrack.value.addEventListener('mousemove', () => {
+					if (isScrollbarVisible.value) {
+						setUpHoverColor(scrollbarTrack.value, options.trackHoverColor);
+					}
+				});
+				scrollbarTrack.value.addEventListener('mouseout', () => {
+					setUpHoverColor(scrollbarTrack.value, options.trackColor);
+				});
 			}
 		}
 	}
-
 
 	const showScrollbar = () => {
 		isScrolling.value = true
 		if (timeout) clearTimeout(timeout)
 
+		// Sử dụng thời gian ẩn tương ứng với loại thiết bị
+		const duration = getHideDuration();
+
+
 		timeout = setTimeout(() => {
 			isScrolling.value = false
-		}, durationHide.value)
+		}, duration)
 	}
 
-	const hoverScrollbarThumb = () => {
-		if (timeout) clearTimeout(timeout)
-		isScrolling.value = true;
+	// Xử lý hover vào scrollbar (chỉ cho chuột)
+	const onScrollbarHover = () => {
+		isMouseHovering.value = true;
 	}
 
-	const blurScrollbarThumb = () => {
-		showScrollbar()
+	// Xử lý khi di chuột ra khỏi scrollbar
+	const onScrollbarLeave = () => {
+		isMouseHovering.value = false;
 	}
 
 	const calculateScrollPosition = (clientY) => {
@@ -120,6 +166,8 @@
 	}
 
 	const startStepScroll = (targetScrollTop) => {
+		if (!isScrollbarVisible.value) return; // Chỉ hoạt động khi scrollbar visible
+
 		if (holdScrollInterval.value) {
 			clearInterval(holdScrollInterval.value);
 		}
@@ -137,11 +185,16 @@
 		scrollOneStep(isScrollingDown, targetScroll.value);
 
 		if (isHoldingTrack.value && currentStep.value < totalSteps.value) {
-			holdScrollInterval.value = setInterval(() => scrollOneStep(isScrollingDown, targetScroll.value), durationStepJump.value);
+			holdScrollInterval.value = setInterval(() => scrollOneStep(isScrollingDown, targetScroll.value), props.durationStepJump);
 		}
 	}
 
 	const scrollOneStep = (isScrollingDown, targetScroll) => {
+		if (!isScrollbarVisible.value) {
+			clearInterval(holdScrollInterval.value);
+			return;
+		}
+
 		const {clientHeight, scrollHeight, scrollTop} = container.value;
 
 		if (!isHoldingTrack.value) {
@@ -172,7 +225,6 @@
 		}
 	}
 
-
 	const onTrackMouseLeave = () => {
 		if (isHoldingTrack.value && holdScrollInterval.value) {
 			clearInterval(holdScrollInterval.value);
@@ -181,6 +233,8 @@
 
 	// Thêm xử lý scroll wheel trong track
 	const onTrackWheel = (e) => {
+		if (!isScrollbarVisible.value) return; // Chỉ hoạt động khi scrollbar visible
+
 		e.preventDefault();
 		const {clientHeight, scrollHeight, scrollTop} = container.value;
 		const maxScroll = scrollHeight - clientHeight;
@@ -199,6 +253,8 @@
 			if (holdScrollInterval.value) {
 				clearInterval(holdScrollInterval.value);
 			}
+
+			if (!isScrollbarVisible.value) return; // Chỉ hoạt động khi scrollbar visible
 
 			const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
 			if (e.clientX >= left && e.clientX <= right && e.clientY >= top && e.clientY <= bottom) {
@@ -227,6 +283,8 @@
 	}
 
 	const onMouseDown = (e) => {
+		if (!isScrollbarVisible.value) return; // Chỉ hoạt động khi scrollbar visible
+
 		isDragging.value = true;
 		startY.value = e.clientY;
 		startScrollTop.value = container.value.scrollTop;
@@ -236,6 +294,12 @@
 
 	const onMouseMove = (e) => {
 		if (!isDragging.value) return;
+		if (!isScrollbarVisible.value) {
+			isDragging.value = false;
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('mouseup', onMouseUp);
+			return;
+		}
 
 		e.preventDefault();
 		const deltaY = e.clientY - startY.value;
@@ -248,6 +312,7 @@
 	}
 
 	const onTrackMouseDown = (e) => {
+		if (!isScrollbarVisible.value) return; // Chỉ hoạt động khi scrollbar visible
 		if (e.target === scrollbarThumb.value) return;
 
 		isHoldingTrack.value = true;
@@ -259,6 +324,14 @@
 
 	const onTrackMouseMove = (e) => {
 		if (!isHoldingTrack.value) return;
+		if (!isScrollbarVisible.value) {
+			isHoldingTrack.value = false;
+			document.removeEventListener('mousemove', onTrackMouseMove);
+			if (holdScrollInterval.value) {
+				clearInterval(holdScrollInterval.value);
+			}
+			return;
+		}
 
 		const {left, right, top, bottom} = scrollbarTrack.value.getBoundingClientRect();
 		const clientX = e.clientX;
@@ -309,6 +382,10 @@
 
 	// Thêm các hàm xử lý touch events
 	const onThumbTouchStart = (e) => {
+		isTouchDevice.value = true; // Đánh dấu đang sử dụng touch
+
+		if (!isScrollbarVisible.value) return; // Chỉ hoạt động khi scrollbar visible
+
 		e.preventDefault();
 		const touch = e.touches[0];
 		isTouching.value = true;
@@ -319,6 +396,11 @@
 
 	const onThumbTouchMove = (e) => {
 		if (!isTouching.value) return;
+		if (!isScrollbarVisible.value) {
+			isTouching.value = false;
+			return;
+		}
+
 		e.preventDefault();
 
 		const touch = e.touches[0];
@@ -333,6 +415,9 @@
 	}
 
 	const onTrackTouchStart = (e) => {
+		isTouchDevice.value = true; // Đánh dấu đang sử dụng touch
+
+		if (!isScrollbarVisible.value) return; // Chỉ hoạt động khi scrollbar visible
 		if (e.target === scrollbarThumb.value) return;
 
 		const touch = e.touches[0];
@@ -343,6 +428,14 @@
 
 	const onTrackTouchMove = (e) => {
 		if (!isHoldingTrack.value) return;
+		if (!isScrollbarVisible.value) {
+			isHoldingTrack.value = false;
+			if (holdScrollInterval.value) {
+				clearInterval(holdScrollInterval.value);
+			}
+			return;
+		}
+
 		e.preventDefault();
 
 		const touch = e.touches[0];
@@ -378,21 +471,41 @@
 	const onTouchEnd = () => {
 		isTouching.value = false;
 		isHoldingTrack.value = false;
+
+		// Đối với touch, vẫn sử dụng timeout bình thường
+		// showScrollbar() đã được gọi trong các sự kiện scroll
+
 		if (holdScrollInterval.value) {
 			clearInterval(holdScrollInterval.value);
 		}
 	}
 
+	// Phát hiện thiết bị touch khi tương tác với nội dung
+	const onContentTouchStart = () => {
+		isTouchDevice.value = true;
+	}
+
+	// Phát hiện thiết bị sử dụng chuột
+	const onContentMouseMove = () => {
+		isTouchDevice.value = false;
+	}
 
 	const addEventScrollbar = () => {
 		if (container.value) {
 			container.value.addEventListener('scroll', showScrollbar)
 			container.value.addEventListener('scroll', updateScrollbarPosition)
-			scrollbarTrack.value.addEventListener('mousemove', hoverScrollbarThumb)
-			scrollbarTrack.value.addEventListener('mouseout', blurScrollbarThumb)
+
+			// Theo dõi loại thiết bị
+			container.value.addEventListener('touchstart', onContentTouchStart)
+			container.value.addEventListener('mousemove', onContentMouseMove)
+
+			// Thêm event listener cho hover (chỉ có tác dụng với chuột)
+			scrollbarTrack.value.addEventListener('mouseenter', onScrollbarHover)
+			scrollbarTrack.value.addEventListener('mouseleave', onScrollbarLeave)
+
 			scrollbarTrack.value.addEventListener('mousedown', onTrackMouseDown)
 			scrollbarTrack.value.addEventListener('mouseleave', onTrackMouseLeave)
-			scrollbarTrack.value.addEventListener('wheel', onTrackWheel) // Thêm event wheel
+			scrollbarTrack.value.addEventListener('wheel', onTrackWheel)
 			document.addEventListener('mouseup', onTrackMouseUp)
 			scrollbarThumb.value.addEventListener('mousedown', onMouseDown)
 
@@ -411,11 +524,18 @@
 		if (container.value) {
 			container.value.removeEventListener('scroll', showScrollbar)
 			container.value.removeEventListener('scroll', updateScrollbarPosition)
-			scrollbarTrack.value.removeEventListener('mousemove', hoverScrollbarThumb)
-			scrollbarTrack.value.removeEventListener('mouseout', blurScrollbarThumb)
+
+			// Xóa event listener theo dõi thiết bị
+			container.value.removeEventListener('touchstart', onContentTouchStart)
+			container.value.removeEventListener('mousemove', onContentMouseMove)
+
+			// Loại bỏ event listener cho hover
+			scrollbarTrack.value.removeEventListener('mouseenter', onScrollbarHover)
+			scrollbarTrack.value.removeEventListener('mouseleave', onScrollbarLeave)
+
 			scrollbarTrack.value.removeEventListener('mousedown', onTrackMouseDown)
 			scrollbarTrack.value.removeEventListener('mouseleave', onTrackMouseLeave)
-			scrollbarTrack.value.removeEventListener('wheel', onTrackWheel) // Remove event wheel
+			scrollbarTrack.value.removeEventListener('wheel', onTrackWheel)
 			document.removeEventListener('mouseup', onTrackMouseUp)
 			document.removeEventListener('mousemove', onTrackMouseMove)
 			scrollbarThumb.value.removeEventListener('mousedown', onMouseDown)
@@ -430,6 +550,15 @@
 		if (timeout) clearTimeout(timeout)
 		if (holdScrollInterval.value) clearInterval(holdScrollInterval.value)
 	}
+
+	// Theo dõi thay đổi của props để cập nhật scrollbar
+	watch(() => [props.thumbWidth, props.trackWidth], () => {
+		if (scrollbarTrack.value) {
+			const offset = props.thumbWidth > props.trackWidth ?
+				  (props.thumbWidth - props.trackWidth) / 2 : 0;
+			scrollbarTrack.value.style.right = offset + "px";
+		}
+	});
 
 	onMounted(() => {
 		setupScrollbar(props)
@@ -450,7 +579,8 @@
 		<div
 			  ref="scrollbarTrack"
 			  class="custom-scrollbar"
-			  :class="{ 'scrollbar-visible': isScrolling }"
+			  :class="{ 'scrollbar-visible': isScrollbarVisible }"
+			  :style="{ right: scrollbarOffset + 'px' }"
 		>
 			<div
 				  class="scrollbar-thumb"
@@ -493,14 +623,14 @@
 		background-color: rgba(0, 0, 0, 0.1);
 		position: absolute;
 		top: 0;
-		right: 0;
-		width: 20px;
+		/* right định nghĩa động trong style binding ở template */
+		width: 4px; /* Mặc định theo track width */
 		height: 100%;
 		opacity: 0;
 		transition: opacity 0.3s ease, background-color 0.3s linear;
 		user-select: none;
-
 		touch-action: none;
+		pointer-events: auto; /* Luôn nhận sự kiện để bắt được hover */
 	}
 
 	.scrollbar-visible {
@@ -512,7 +642,7 @@
 		position: absolute;
 		top: 0;
 		right: 50%;
-		width: 6px;
+		width: 10px; /* Mặc định theo thumb width */
 		height: 100%;
 		min-height: 30px;
 		background-color: rgba(144, 144, 144, 0.7);
@@ -530,5 +660,4 @@
 			opacity: 1;
 		}
 	}
-
 </style>
